@@ -78,6 +78,7 @@ $disk_size ||= "20GB"
 $local_path_provisioner_enabled ||= "True"
 $local_path_provisioner_claim_root ||= "/opt/local-path-provisioner/"
 $libvirt_nested ||= true
+$parent_dir = File.expand_path("..", Dir.pwd)
 # boolean or string (e.g. "-vvv")
 $ansible_verbosity ||= true
 $ansible_tags ||= ENV['VAGRANT_ANSIBLE_TAGS'] || ""
@@ -170,14 +171,6 @@ Vagrant.configure("2") do |config|
             lv.storage :file, :device => "hd#{driverletters[d]}", :path => "disk-#{i}-#{d}-#{DISK_UUID}.disk", :size => $kube_node_instances_with_disks_size, :bus => "scsi"
           end
         end
-        node.vm.provider :virtualbox do |vb|
-          # always make /dev/sd{a/b/c} so that CI can ensure that
-          # virtualbox and libvirt will have the same devices to use for OSDs
-          (1..$kube_node_instances_with_disks_number).each do |d|
-            vb.customize ['createhd', '--filename', "disk-#{i}-#{driverletters[d]}-#{DISK_UUID}.disk", '--size', $kube_node_instances_with_disks_size] # 10GB disk
-            vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', d, '--device', 0, '--type', 'hdd', '--medium', "disk-#{i}-#{driverletters[d]}-#{DISK_UUID}.disk", '--nonrotational', 'on', '--mtype', 'normal']
-          end
-        end
       end
 
       if $expose_docker_tcp
@@ -248,7 +241,7 @@ Vagrant.configure("2") do |config|
         "kube_network_plugin_multus": $multi_networking,
         "download_run_once": $download_run_once,
         "download_localhost": "False",
-        "download_cache_dir": ENV['HOME'] + "/kubespray_cache",
+        "download_cache_dir": File.join($parent_dir, "kubespray_cache"),
         # Make kubespray cache even when download_run_once is false
         "download_force_cache": $download_force_cache,
         # Keeping the cache on the nodes can improve provisioning speed while debugging kubespray
@@ -291,7 +284,6 @@ Vagrant.configure("2") do |config|
           }
         end
       end
-
     end
   end
 end
